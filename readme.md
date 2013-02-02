@@ -28,12 +28,12 @@ This configuration does not sync `.htaccess` file in the root of the web applica
         /libs
         /log/.htaccess
         /temp/.htaccess
-	/index.php
-	/favicon.ico
+        /index.php
+        /favicon.ico
     "
     
     ignore = "
         .git*
         .DS_Store
-	config.local.neon
+        config.local.neon
     "
