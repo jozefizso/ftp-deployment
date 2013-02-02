@@ -67,6 +67,7 @@ foreach ($config as $section => $cfg) {
 
 	$cfg = array_change_key_case($cfg, CASE_LOWER) + array(
 		'local' => dirname($configFile),
+		'include' => '',
 		'ignore' => '',
 		'allowdelete' => TRUE,
 		'purge' => '',
@@ -90,6 +91,7 @@ foreach ($config as $section => $cfg) {
 		$deployment->addFilter('css', array($preprocessor, 'compress'));
 	}
 
+	$deployment->includeMasks = toArray($cfg['include']);
 	$deployment->ignoreMasks = array_merge(
 		array('*.bak', '.svn' , '.git*'),
 		toArray($cfg['ignore'])

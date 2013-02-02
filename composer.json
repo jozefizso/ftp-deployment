@@ -1,14 +1,18 @@
 {
-	"name": "dg/ftp-deployment",
+	"name": "jozefizso/ftp-deployment",
 	"type": "tool",
 	"description": "A tool for automated deployment of web applications to an FTP server.",
 	"keywords": ["deployment", "ftp"],
-	"homepage": "https://github.com/dg/ftp-deployment",
+	"homepage": "https://github.com/jozefizso/ftp-deployment",
 	"license": ["BSD-3-Clause", "GPL-2.0", "GPL-3.0"],
 	"authors": [
 		{
 			"name": "David Grudl",
 			"homepage": "http://davidgrudl.com"
+		},
+		{
+			"name": "Jozef Izso",
+			"homepage": "https://github.com/jozefizso"
 		}
 	]
 }

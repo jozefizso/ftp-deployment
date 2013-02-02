@@ -10,6 +10,56 @@
  */
 
 
+if (!function_exists('fnmatch')) { 
+    define('FNM_PATHNAME', 1); 
+    define('FNM_NOESCAPE', 2); 
+    define('FNM_PERIOD', 4); 
+    define('FNM_CASEFOLD', 16); 
+    
+    function fnmatch($pattern, $string, $flags = 0) { 
+        return pcre_fnmatch($pattern, $string, $flags); 
+    } 
+} 
+
+function pcre_fnmatch($pattern, $string, $flags = 0) { 
+    $modifiers = null; 
+    $transforms = array( 
+        '\*'    => '.*', 
+        '\?'    => '.', 
+        '\[\!'    => '[^', 
+        '\['    => '[', 
+        '\]'    => ']', 
+        '\.'    => '\.', 
+        '\\'    => '\\\\' 
+    ); 
+    
+    // Forward slash in string must be in pattern: 
+    if ($flags & FNM_PATHNAME) { 
+        $transforms['\*'] = '[^/]*'; 
+    } 
+    
+    // Back slash should not be escaped: 
+    if ($flags & FNM_NOESCAPE) { 
+        unset($transforms['\\']); 
+    } 
+    
+    // Perform case insensitive match: 
+    if ($flags & FNM_CASEFOLD) { 
+        $modifiers .= 'i'; 
+    } 
+    
+    // Period at start must be the same as pattern: 
+    if ($flags & FNM_PERIOD) { 
+        if (strpos($string, '.') === 0 && strpos($pattern, '.') !== 0) return false; 
+    } 
+    
+    $pattern = '#^' 
+        . strtr(preg_quote($pattern, '#'), $transforms) 
+        . '$#' 
+        . $modifiers; 
+    
+    return (boolean)preg_match($pattern, $string); 
+}
 
 /**
  * Synchronizes local and remote.
@@ -27,6 +77,9 @@ class Deployment
 
 	/** @var array */
 	public $ignoreMasks = array();
+
+	/** @var array */
+	public $includeMasks = array();
 
 	/** @var bool */
 	public $testMode = FALSE;
@@ -98,7 +151,7 @@ class Deployment
 
 		$this->logger->log("Scanning files in $this->local");
 		chdir($this->local);
-		$localFiles = $this->collectFiles('');
+		$localFiles = $this->collectFiles('', empty($this->includeMasks));
 		unset($localFiles["/$this->deploymentFile"]);
 
 		$toDelete = $this->allowDelete ? array_keys(array_diff_key($remoteFiles, $localFiles)) : array();
@@ -321,7 +374,7 @@ class Deployment
 	 * @param  string
 	 * @return array
 	 */
-	private function collectFiles($dir)
+	private function collectFiles($dir, $parentIsIncluded = FALSE)
 	{
 		$list = array();
 		$iterator = dir(".$dir");
@@ -336,15 +389,29 @@ class Deployment
 			} elseif (!is_readable($path)) {
 				continue;
 
+			} elseif ($this->matchMask($path, $this->includeMasks)) {
+				$this->logger->log("Included $path");
+
+				if (is_dir($path)) {
+					$list["$dir/$entry/"] = TRUE;
+					$list += $this->collectFiles("$dir/$entry", TRUE);
+				} elseif (is_file($path)) {
+					$list["$dir/$entry"] = md5_file($this->preprocess($path));
+				}
 			} elseif ($this->matchMask($path, $this->ignoreMasks)) {
 				$this->logger->log("Ignoring $path");
 				continue;
 
 			} elseif (is_dir($path)) {
-				$list["$dir/$entry/"] = TRUE;
-				$list += $this->collectFiles("$dir/$entry");
+				// check the directory for files that can be included in sync
+				if ($parentIsIncluded) {
+					$list["$dir/$entry/"] = TRUE;
+				}
+				// collect any files and directories inside this directory that
+				// can possibly match include pattern
+				$list += $this->collectFiles("$dir/$entry", $parentIsIncluded);
 
-			} elseif (is_file($path)) {
+			} elseif ($parentIsIncluded && is_file($path)) {
 				$list["$dir/$entry"] = md5_file($this->preprocess($path));
 			}
 		}
@@ -401,7 +468,7 @@ class Deployment
 			if ($neg = substr($pattern, 0, 1) === '!') {
 				$pattern = substr($pattern, 1);
 			}
-			if (substr($pattern, -1) === '/') { // leading slash means directory
+			if (substr($pattern, -1) === '/') { // trailing slash means directory
 				if (!is_dir($path)) {
 					continue;
 				}
