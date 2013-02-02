@@ -25,15 +25,15 @@ This configuration does not sync `.htaccess` file in the root of the web applica
         /app
         /css
         /js
-        /libs
-        /log/.htaccess
-        /temp/.htaccess
-        /index.php
-        /favicon.ico
+	/libs
+	/log/.htaccess
+	/temp/.htaccess
+	/index.php
+	/favicon.ico
     "
-    
+
     ignore = "
-        .git*
-        .DS_Store
-        config.local.neon
+	.git*
+	.DS_Store
+	config.local.neon
     "
